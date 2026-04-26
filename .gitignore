@@ -1,0 +1,22 @@
+# Data files (too large for Git)
+data/
+*.bam
+*.fastq
+*.fastq.gz
+*.tar
+*.tar.gz
+
+# R session files
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
