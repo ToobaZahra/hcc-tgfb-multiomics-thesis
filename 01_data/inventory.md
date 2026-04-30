@@ -6,19 +6,19 @@
 ---
 
 ## TCGA-LIHC (Primary Cohort)
-**Source:** GDC Portal + cBioPortal
+**Source:** GDC Portal (verified via TCGAbiolinks R package)
 **Role:** Primary analysis — DGE, methylation, mutation, staging, survival
 
 | Data Type | n samples | Notes |
 |---|---|---|
-| Primary Tumor (RNA-seq) | 373 | STAR/HTSeq counts |
-| Solid Tissue Normal (RNA-seq) | 89 | From GDC portal |
+| Primary Tumor (RNA-seq, STAR-Counts) | 371 | TCGAbiolinks query verified 28 Apr 2026 |
+| Solid Tissue Normal (RNA-seq, STAR-Counts) | 50 | TCGAbiolinks query verified 28 Apr 2026 |
 | DNA Methylation (450K) | 379 | Illumina 450K arrays |
 | Somatic Mutation (MAF) | 373 | Masked somatic mutations |
 | Clinical (staging) | 377 | Full AJCC staging available |
 | Proteome Profiling (RPPA) | 184 | Bonus — check for phospho-SMAD antibodies |
 
-**Total RNA-seq for DESeq2:** 373 tumor + 89 normal = **462 samples**
+**Total RNA-seq for DESeq2:** 371 tumor + 50 normal = **421 samples**
 
 ---
 
