@@ -5,6 +5,7 @@ data/
 *.fastq.gz
 *.tar
 *.tar.gz
+*.rds
 
 # R session files
 .Rhistory
@@ -20,3 +21,4 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+EOF
