@@ -102,6 +102,23 @@
 
 ---
 
+## Local file structure (gitignored, not on GitHub)
+
+data/
+└── raw/
+├── tcga_lihc_rnaseq_se.rds # ~800 MB - SummarizedExperiment, 60660 × 421
+├── tcga_lihc_clinical.rds # ~300 KB - clinical data, 377 rows
+├── tcga_lihc_meth450_se.rds # PENDING - to download Week 6
+└── GDCdata/ # raw downloaded files from GDC
+
+**Confirmed counts (28 Apr 2026 via TCGAbiolinks):**
+- Primary Tumor: 371
+- Solid Tissue Normal: 50
+- Total RNA-seq samples: 421
+- Genes (Ensembl IDs): 60,660
+- Clinical records: 377
+
+---
 ## Pending Items
 - [ ] Verify GSE14520 supplementary clinical file has all 488 samples annotated
 - [ ] Check TCPA portal for phospho-SMAD3 antibody on TCGA-LIHC RPPA panel
