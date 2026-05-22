@@ -23,3 +23,26 @@ for (gse in geo_ids) {
     cat(gse, "platform", i, "samples:", ncol(obj[[i]]), "\n")
   }
 }
+
+options(timeout = 600)  # 10 min timeout
+library(GEOquery)
+
+geo_dir <- "data/raw/geo"
+
+# Download remaining two
+remaining <- c("GSE36376", "GSE76427")
+
+for (gse in remaining) {
+  cat("\n=== Downloading", gse, "===\n")
+  gse_obj <- getGEO(gse, GSEMatrix = TRUE, destdir = geo_dir, AnnotGPL = TRUE)
+  saveRDS(gse_obj, file = file.path(geo_dir, paste0(gse, ".rds")))
+  cat("Saved", gse, "\n")
+}
+
+#Verify sample counts 
+for (gse in c("GSE14520", "GSE36376", "GSE76427")) {
+  obj <- readRDS(paste0("data/raw/geo/", gse, ".rds"))
+  for (i in seq_along(obj)) {
+    cat(gse, "platform", i, "samples:", ncol(obj[[i]]), "\n")
+  }
+}
