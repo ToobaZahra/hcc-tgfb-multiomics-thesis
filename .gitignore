@@ -15,6 +15,7 @@ data/
 .RData
 .Rproj.user/
 *.Rproj
+.RDataTmp*
 
 # Python
 __pycache__/
