@@ -7,6 +7,9 @@ data/
 *.tar.gz
 *.rds
 
+03_results/
+04_figures/
+
 # R session files
 .Rhistory
 .RData
