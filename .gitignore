@@ -10,6 +10,9 @@ data/
 03_results/
 04_figures/
 
+MANIFEST.txt
+*.txt
+
 # R session files
 .Rhistory
 .RData
