@@ -1,3 +1,0 @@
-GSE76427 stage stratification (BCLC Late vs Early): No significant DEGs found.
-  Likely due to small Late-stage group (n=37) and linear-scale expression data.
-  TCGA-LIHC stage stratification remains the primary stage analysis.
