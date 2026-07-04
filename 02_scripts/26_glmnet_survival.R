@@ -63,3 +63,43 @@ cat("\nSelected genes in survival signature:\n")
 print(coefs_df)
 
 write.csv(coefs_df, "03_results/glmnet_survival_signature.csv", row.names = FALSE)
+
+
+
+
+# ── Risk score calculation ────────────────────────────────
+# Calculate risk score for each sample
+risk_score <- nexus_expr[, coefs_df$gene] %*% coefs_df$coefficient
+risk_score <- as.numeric(risk_score)
+
+# Split into high/low risk by median
+median_risk <- median(risk_score)
+risk_group <- ifelse(risk_score >= median_risk, "High", "Low")
+
+# Survival dataframe
+risk_df <- data.frame(
+  os_time = clin_tumor$os_time,
+  os_event = clin_tumor$os_event,
+  risk_score = risk_score,
+  risk_group = factor(risk_group, levels = c("Low", "High"))
+)
+
+# KM plot by risk group
+library(survminer)
+fit <- survfit(Surv(os_time, os_event) ~ risk_group, data = risk_df)
+
+p <- ggsurvplot(fit,
+                data = risk_df,
+                pval = TRUE,
+                risk.table = TRUE,
+                title = "glmnet Survival Signature — Risk Score (TCGA-LIHC)",
+                legend.labs = c("Low Risk", "High Risk"),
+                palette = c("#2E7C4A", "#D9534F"))
+
+png("04_figures/glmnet_km_risk.png", width = 8, height = 6, 
+    units = "in", res = 300)
+print(p)
+dev.off()
+
+write.csv(risk_df, "03_results/glmnet_risk_scores.csv", row.names = FALSE)
+cat("Risk score KM plot saved.\n")
