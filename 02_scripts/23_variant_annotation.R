@@ -71,7 +71,6 @@ variants_df <- bind_rows(all_variants)
 cat("Total variants fetched:", nrow(variants_df), "\n")
 
 saveRDS(variants_df, "03_results/nexus_variants_raw.rds")
-write.csv(variants_df, "03_results/nexus_variants_raw.csv", row.names = FALSE)
 cat("Variants saved.\n")
 
 
@@ -125,3 +124,26 @@ variants_priority_flat[list_cols] <- lapply(variants_priority_flat[list_cols],
 write.csv(variants_priority_flat, "03_results/nexus_variants_prioritized.csv", 
           row.names = FALSE)
 cat("Prioritized variants saved.\n")
+
+
+# ── Pathogenic variant summary per gene ──────────────────
+library(dplyr)
+
+pathogenic_summary <- variants_priority %>%
+  group_by(gene_symbol) %>%
+  summarise(
+    total_high_impact = n(),
+    n_pathogenic = sum(is_pathogenic),
+    n_missense = sum(consequence_type == "missense_variant"),
+    n_frameshift = sum(consequence_type == "frameshift_variant"),
+    n_stop_gained = sum(consequence_type == "stop_gained"),
+    n_splice = sum(consequence_type %in% c("splice_acceptor_variant",
+                                           "splice_donor_variant"))
+  ) %>%
+  arrange(desc(n_pathogenic))
+
+write.csv(pathogenic_summary, "03_results/nexus_variants_summary.csv", 
+          row.names = FALSE)
+
+cat("Pathogenic variant summary:\n")
+print(pathogenic_summary, n = 26)
