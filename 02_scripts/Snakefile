@@ -1,0 +1,150 @@
+# Snakefile — HCC TGF-β Multi-Omics Pipeline
+# Author: Tooba Zahra
+# Run: snakemake --cores 4
+
+rule all:
+    input:
+        "data/raw/tcga_lihc_dds_filtered.rds",
+        "data/raw/tcga_lihc_vsd.rds",
+        "data/raw/tcga_lihc_meth450_se.rds",
+        "03_results/dge/dge_tcga_tumor_vs_normal.rds",
+        "03_results/dge/dge_late_vs_early.rds",
+        "03_results/dge/nexus_replication_summary.csv",
+        "03_results/methylation/dmeth_tcga_tumor_vs_normal.csv",
+        "03_results/methylation/methylation_expression_correlation.csv",
+        "03_results/survival/cox_univariate.csv",
+        "03_results/survival/cox_stage_adjusted.csv",
+        "03_results/survival/glmnet_risk_scores.csv",
+        "03_results/signature/glmnet_stage_signature.csv",
+        "03_results/variants/nexus_variants_prioritized.csv",
+        "03_results/network/string_network.csv",
+        "03_results/dge/multiomics_integrated.csv",
+        "04_figures/pca_tcga_lihc.png",
+        "04_figures/volcano_tcga.png",
+        "04_figures/heatmap_top50.png",
+        "04_figures/forest_plot.png",
+        "04_figures/glmnet_km_risk.png",
+        "04_figures/string_network.png",
+        "04_figures/multiomics_heatmap.png"
+
+rule download_tcga:
+    output:
+        "data/raw/tcga_lihc_rnaseq_se.rds",
+        "data/raw/tcga_lihc_clinical.rds"
+    shell:
+        "Rscript 02_scripts/01_download_tcga.R"
+
+rule download_geo:
+    output:
+        "data/raw/geo/GSE14520.rds",
+        "data/raw/geo/GSE36376.rds",
+        "data/raw/geo/GSE76427.rds"
+    shell:
+        "Rscript 02_scripts/02_download_geo.R"
+
+rule build_dds:
+    input:
+        "data/raw/tcga_lihc_rnaseq_se.rds",
+        "data/raw/tcga_lihc_clinical.rds"
+    output:
+        "data/raw/tcga_lihc_dds_filtered.rds"
+    shell:
+        "Rscript 02_scripts/03_build_dds.R"
+
+rule pca_qc:
+    input:
+        "data/raw/tcga_lihc_dds_filtered.rds"
+    output:
+        "data/raw/tcga_lihc_vsd.rds",
+        "04_figures/pca_tcga_lihc.png",
+        "04_figures/sample_dist_heatmap.png"
+    shell:
+        "Rscript 02_scripts/04_pca_qc.R"
+
+rule normalize_geo:
+    input:
+        "data/raw/geo/GSE14520.rds",
+        "data/raw/geo/GSE36376.rds",
+        "data/raw/geo/GSE76427.rds"
+    output:
+        "data/raw/geo/GSE14520_norm.rds",
+        "data/raw/geo/GSE36376_norm.rds",
+        "data/raw/geo/GSE76427_norm.rds"
+    shell:
+        "Rscript 02_scripts/05_normalize_geo.R"
+
+rule dge_tcga:
+    input:
+        "data/raw/tcga_lihc_dds_filtered.rds"
+    output:
+        "03_results/dge/dge_tcga_tumor_vs_normal.rds",
+        "03_results/dge/dge_nexus_genes.csv",
+        "04_figures/volcano_tcga.png",
+        "04_figures/heatmap_top50.png"
+    shell:
+        "Rscript 02_scripts/06_dge_tcga.R"
+
+rule dge_by_stage:
+    input:
+        "data/raw/tcga_lihc_dds_filtered.rds",
+        "data/raw/tcga_lihc_clinical.rds"
+    output:
+        "03_results/dge/dge_late_vs_early.rds"
+    shell:
+        "Rscript 02_scripts/09_dge_by_stage.R"
+
+rule limma_geo:
+    input:
+        "data/raw/geo/GSE14520_norm.rds",
+        "data/raw/geo/GSE36376_norm.rds",
+        "data/raw/geo/GSE76427_norm.rds"
+    output:
+        "03_results/dge/nexus_replication_summary.csv"
+    shell:
+        "Rscript 02_scripts/10_limma_GSE14520.R && Rscript 02_scripts/11_limma_GSE36376_GSE76427.R && Rscript 02_scripts/12_replication_summary.R"
+
+rule methylation:
+    input:
+        "data/raw/tcga_lihc_meth450_se.rds"
+    output:
+        "03_results/methylation/dmeth_tcga_tumor_vs_normal.csv"
+    shell:
+        "Rscript 02_scripts/15_methylation_analysis.R"
+
+rule survival:
+    input:
+        "data/raw/tcga_lihc_vsd.rds",
+        "data/raw/tcga_lihc_clinical.rds"
+    output:
+        "03_results/survival/cox_univariate.csv",
+        "03_results/survival/cox_stage_adjusted.csv",
+        "03_results/survival/glmnet_risk_scores.csv",
+        "04_figures/forest_plot.png",
+        "04_figures/glmnet_km_risk.png"
+    shell:
+        "Rscript 02_scripts/28_survival.R && Rscript 02_scripts/29_survival_by_stage.R && Rscript 02_scripts/30_forest_plot.R && Rscript 02_scripts/26_glmnet_survival.R"
+
+rule variants:
+    output:
+        "03_results/variants/nexus_variants_prioritized.csv"
+    shell:
+        "Rscript 02_scripts/23_variant_annotation.R"
+
+rule network:
+    output:
+        "03_results/network/string_network.csv",
+        "04_figures/string_network.png"
+    shell:
+        "Rscript 02_scripts/24_string_network.R"
+
+rule integrate:
+    input:
+        "03_results/dge/dge_tcga_tumor_vs_normal.rds",
+        "03_results/methylation/dmeth_tcga_tumor_vs_normal.csv",
+        "03_results/survival/cox_univariate.csv",
+        "03_results/variants/nexus_variants_prioritized.csv"
+    output:
+        "03_results/dge/multiomics_integrated.csv",
+        "04_figures/multiomics_heatmap.png"
+    shell:
+        "Rscript 02_scripts/20_multiomics_integration.R"
