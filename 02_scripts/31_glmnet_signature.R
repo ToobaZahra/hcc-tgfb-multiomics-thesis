@@ -1,6 +1,15 @@
 # 31_glmnet_signature.R
+# CORRECTED VERSION:
+#  1. Train/test split added -- AUC now computed on HELD-OUT samples,
+#     not the same samples used to fit the model (was circular)
+#  2. type.measure = "auc" set explicitly for cv.glmnet tuning
+#  3. lambda.1se tried first, falls back to lambda.min if it selects
+#     zero genes (same logic as 26_glmnet_survival.R)
+#  4. Comparison figure: in-sample vs held-out ROC curves
+
 library(glmnet)
 library(SummarizedExperiment)
+library(pROC)
 library(dplyr)
 
 vsd <- readRDS("data/raw/tcga_lihc_vsd.rds")
@@ -30,18 +39,16 @@ cat("Staged samples:", ncol(vsd_matched), "\n")
 cat("Stage distribution:\n")
 print(table(clin_matched$stage_group))
 
-
-
-
-
-
-
-
-# Build expression matrix for nexus genes
-nexus_genes <- c("TGFB1","TGFBR1","TGFBR2","SMAD2","SMAD3","SMAD4","SMAD7",
-                 "MAPK8","MAPK9","MAPK10","DUSP1","DUSP4","DUSP10",
-                 "MYC","CDKN1A","CDKN2B","SNAI1","TNF","IL6","IL10","IL37",
-                 "HDAC11","NPC1","CCDC110","TGFBRAP1","KLF4")
+# ------------------------------------------------------------
+# Candidate genes restricted to the 7 with univariate Cox
+# pval<0.05, same rationale as 26_glmnet_survival.R: keeps the
+# events/samples-per-predictor ratio sane instead of throwing
+# all 26 genes at a few hundred samples.
+# ------------------------------------------------------------
+cox_univariate <- read.csv("03_results/survival/cox_univariate.csv")
+nexus_genes <- cox_univariate$gene[cox_univariate$pval < 0.05]
+cat("Candidate genes (univariate pval<0.05):\n")
+print(nexus_genes)
 
 gene_map <- res_df[!is.na(res_df$symbol) & res_df$symbol %in% nexus_genes,
                    c("symbol", "ensembl_id")]
@@ -60,17 +67,91 @@ for (i in 1:nrow(gene_map)) {
 nexus_expr <- nexus_expr[, colSums(is.na(nexus_expr)) == 0]
 y <- factor(clin_matched$stage_group, levels = c("Early", "Late"))
 
-# glmnet logistic regression
-set.seed(42)
-cv_fit <- cv.glmnet(nexus_expr, y, family = "binomial", alpha = 1, nfolds = 10)
+cat("Class balance:\n")
+print(table(y))
 
-coefs <- coef(cv_fit, s = "lambda.min")
+# ------------------------------------------------------------
+# Train/test split -- fit on train only, evaluate on held-out test
+# ------------------------------------------------------------
+set.seed(42)
+n <- nrow(nexus_expr)
+train_idx <- sample(seq_len(n), size = round(0.7 * n))
+
+x_train <- nexus_expr[train_idx, ]; y_train <- y[train_idx]
+x_test  <- nexus_expr[-train_idx, ]; y_test  <- y[-train_idx]
+
+cat("Train samples:", length(y_train), " Test samples:", length(y_test), "\n")
+cat("Train class balance:\n"); print(table(y_train))
+cat("Test class balance:\n");  print(table(y_test))
+
+# ------------------------------------------------------------
+# glmnet logistic regression, tuned on AUC explicitly
+# ------------------------------------------------------------
+cv_fit <- cv.glmnet(x_train, y_train, family = "binomial", alpha = 1,
+                    nfolds = 10, type.measure = "auc")
+
+cat("lambda.min:", cv_fit$lambda.min, "  lambda.1se:", cv_fit$lambda.1se, "\n")
+
+lambda_used <- "lambda.1se"
+coefs <- coef(cv_fit, s = "lambda.1se")
 coefs_df <- data.frame(gene = rownames(coefs), coef = as.numeric(coefs))
 coefs_df <- coefs_df[coefs_df$coef != 0 & coefs_df$gene != "(Intercept)", ]
+
+if (nrow(coefs_df) == 0) {
+  cat("lambda.1se selected zero genes -- falling back to lambda.min.\n",
+      "NOTE: report this explicitly -- lambda.min is less conservative.\n")
+  lambda_used <- "lambda.min"
+  coefs <- coef(cv_fit, s = "lambda.min")
+  coefs_df <- data.frame(gene = rownames(coefs), coef = as.numeric(coefs))
+  coefs_df <- coefs_df[coefs_df$coef != 0 & coefs_df$gene != "(Intercept)", ]
+}
+
 coefs_df <- coefs_df[order(abs(coefs_df$coef), decreasing = TRUE), ]
 
-cat("Selected genes for stage signature:\n")
+cat("\nSelected genes for stage signature (fit on training set, using",
+    lambda_used, "):\n")
 print(coefs_df)
 
-saveRDS(cv_fit, "03_results/signature/glmnet_fit.rds")
+if (nrow(coefs_df) == 0) {
+  stop("Both lambda.1se and lambda.min selected zero genes -- no signature ",
+       "can be extracted from this training split. Report as a null result.")
+}
+
 write.csv(coefs_df, "03_results/signature/glmnet_stage_signature.csv", row.names = FALSE)
+cat("Signature fit using:", lambda_used, "-- record this in your methods section.\n")
+
+# ------------------------------------------------------------
+# Held-out AUC -- the honest validation number
+# ------------------------------------------------------------
+pred_test <- predict(cv_fit, newx = x_test, s = lambda_used, type = "response")
+roc_test <- roc(y_test, as.numeric(pred_test), quiet = TRUE)
+auc_test <- as.numeric(auc(roc_test))
+cat("\nHeld-out test AUC:", round(auc_test, 3), "on", length(y_test), "test samples\n")
+
+# ------------------------------------------------------------
+# In-sample AUC for comparison -- inflated, NOT the number to report
+# ------------------------------------------------------------
+pred_train <- predict(cv_fit, newx = x_train, s = lambda_used, type = "response")
+roc_train <- roc(y_train, as.numeric(pred_train), quiet = TRUE)
+auc_train <- as.numeric(auc(roc_train))
+cat("In-sample (training) AUC:", round(auc_train, 3),
+    "-- inflated, do not report as validation\n")
+
+# ------------------------------------------------------------
+# Comparison figure: in-sample vs held-out ROC curves
+# ------------------------------------------------------------
+png("04_figures/glmnet_stage_roc_insample_vs_heldout.png",
+    width = 8, height = 6, units = "in", res = 300)
+plot(roc_train, col = "#D9534F", lwd = 2,
+     main = "Stage Signature: In-Sample vs Held-Out ROC")
+lines(roc_test, col = "#2E7C4A", lwd = 2)
+legend("bottomright",
+       legend = c(paste0("In-sample (train), AUC=", round(auc_train, 3)),
+                  paste0("Held-out (test), AUC=", round(auc_test, 3))),
+       col = c("#D9534F", "#2E7C4A"), lwd = 2)
+dev.off()
+
+cat("\nComparison ROC figure saved to",
+    "04_figures/glmnet_stage_roc_insample_vs_heldout.png\n")
+cat("Report the HELD-OUT AUC (", round(auc_test, 3),
+    ") as the validation result, not the in-sample number.\n")

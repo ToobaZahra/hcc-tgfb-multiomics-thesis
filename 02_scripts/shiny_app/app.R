@@ -63,10 +63,12 @@ ui <- dashboardPage(
       ),
       tabItem(tabName = "survival",
               fluidRow(
-                box(title = "Cox Regression Results", width = 6,
+                box(title = "Cox Regression Results", width = 12,
                     DTOutput("cox_table")
-                ),
-                box(title = "Risk Score Distribution", width = 6,
+                )
+              ),
+              fluidRow(
+                box(title = "Risk Score Distribution", width = 12,
                     plotOutput("risk_plot")
                 )
               )
