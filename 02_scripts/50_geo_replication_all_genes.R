@@ -81,7 +81,9 @@ write.csv(res, file.path(a, "15_GEO_test_results_long.csv"), row.names = FALSE)
 cat("Genes without a probe or with errors:\n"); print(res[res$note != "", c("dataset", "gene", "note")])
 
 # ── TCGA reference and side-by-side table ────────────────
-tc_s <- read.csv(file.path(a, "8_expr_vs_survival_gene.csv")) %>% transmute(gene, tcga_HR = HR, tcga_surv_padj = padj_cox)
+tc_s <- read.csv(file.path(a, "31_expr_survival_screen_clin_based.csv")) %>%
+  dplyr::rename(HR = HR_per_SD, HR_low = lo, HR_high = hi, p_cox = p, padj_cox = padj_BH) %>%
+  transmute(gene, tcga_HR = HR, tcga_surv_padj = padj_cox)
 tc_d <- read.csv(file.path(d_dir, "nexus_stage_grade_dge.csv")) %>%
   transmute(gene, tcga_tn_log2FC = log2FC_tumor_vs_normal, tcga_stage_log2FC = log2FC_stage, tcga_stage_padj = padj_stage, tcga_tn_padj = padj_tumor_vs_normal)
 w <- function(ds, suf) res %>% filter(dataset == ds) %>%

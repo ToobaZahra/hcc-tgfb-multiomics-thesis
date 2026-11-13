@@ -6,7 +6,8 @@ a <- "03_results/association"; fig_dir <- "04_figures"
 genes_plot <- c("DUSP10", "NPC1", "SMAD2")
 
 # 1. HR, CI, n, deaths per cohort
-tc <- read.csv(file.path(a, "8_expr_vs_survival_gene.csv")) %>%
+tc <- read.csv(file.path(a, "31_expr_survival_screen_clin_based.csv")) %>%
+  dplyr::rename(HR = HR_per_SD, HR_low = lo, HR_high = hi, p_cox = p, padj_cox = padj_BH) %>%
   transmute(gene, cohort = "TCGA-LIHC", HR, lo = HR_low, hi = HR_high, p = p_cox, n, events)
 ge <- read.csv(file.path(a, "15_GEO_test_results_long.csv")) %>%
   filter(!is.na(HR)) %>%

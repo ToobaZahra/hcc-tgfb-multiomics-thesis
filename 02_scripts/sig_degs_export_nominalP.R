@@ -10,7 +10,7 @@ library(openxlsx)
 
 dge_dir  <- "03_results/dge"
 P_CUT    <- 0.05
-LFC_CUT  <- 1
+LFC_CUT  <- 0.5
 COLLAPSE <- TRUE
 
 cohorts <- list(

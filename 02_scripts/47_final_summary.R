@@ -9,26 +9,29 @@ sig <- function(p) !is.na(p) & p < 0.05
 # ── 1. Base: summary from script 44 (grade, stage, DESeq2, tumor-normal, link) ──
 S <- read.csv(file.path(a, "7_summary_best_findings.csv"))
 
-# ── 2. Expression vs survival (script 45) ────────────────
-es <- read.csv(file.path(a, "8_expr_vs_survival_gene.csv")) %>%
+es <- read.csv(file.path(a, "31_expr_survival_screen_clin_based.csv")) %>%
+  dplyr::rename(HR = HR_per_SD, HR_low = lo, HR_high = hi, p_cox = p, padj_cox = padj_BH,
+                HR_adj = HR_age_stage_adj, p_adj_model = p_age_stage_adj,
+                padj_adj_model = padj_age_stage_adj_BH) %>%
   transmute(gene, expr_HR = HR, expr_surv_padj = padj_cox,
-            expr_HR_adj = HR_adj, expr_surv_p_adj_model = p_adj_model, expr_logrank_padj = padj_logrank)
+            expr_HR_adj = HR_adj, expr_surv_p_adj_model = p_adj_model,
+            expr_logrank_padj = NA_real_)
 
 # ── 3. Methylation vs survival, gene level (script 46) ───
-ms <- read.csv(file.path(a, "9_meth_vs_survival_gene.csv")) %>%
+ms <- read.csv(file.path(a, "41_meth_vs_survival_gene_clin_based.csv")) %>%
   transmute(gene, meth_HR = HR, meth_surv_padj = padj_cox,
             meth_HR_adj = HR_adj, meth_surv_p_adj_model = p_adj_model)
 
 # ── 4. Methylation vs survival, probe level ──────────────
-tp <- read.csv(file.path(a, "10_meth_vs_survival_probe.csv"))
+tp <- read.csv(file.path(a, "42_meth_vs_survival_probe_clin_based.csv"))
 pg <- read.csv(file.path(a, "5_meth_vs_grade_probe.csv")) %>% filter(significant) %>% dplyr::select(gene, probe)
 pe <- read.csv(file.path(m, "meth_expr_corr_probe_level.csv")) %>% filter(sig(padj)) %>% dplyr::select(gene, probe)
 ts <- tp %>% filter(sig(padj_cox))
 ps <- tp %>% group_by(gene) %>%
   summarise(n_probes_surv_sig = sum(sig(padj_cox)), best_probe_surv = probe[which.min(p_cox)],
             best_probe_HR = HR[which.min(p_cox)], .groups = "drop")
-b1 <- ts %>% inner_join(pe, by = c("gene", "probe")) %>% count(gene, name = "n_probes_surv_and_expr")
-b2 <- ts %>% inner_join(pg, by = c("gene", "probe")) %>% count(gene, name = "n_probes_surv_and_grade")
+b1 <- ts %>% inner_join(pe, by = c("gene", "probe")) %>% dplyr::count(gene, name = "n_probes_surv_and_expr")
+b2 <- ts %>% inner_join(pg, by = c("gene", "probe")) %>% dplyr::count(gene, name = "n_probes_surv_and_grade")
 
 F <- S %>% left_join(es, by = "gene") %>% left_join(ms, by = "gene") %>%
   left_join(ps, by = "gene") %>% left_join(b1, by = "gene") %>% left_join(b2, by = "gene")
