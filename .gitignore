@@ -9,6 +9,7 @@ data/
 
 03_results/
 04_figures/
+05_validation/
 
 MANIFEST.txt
 *.txt
